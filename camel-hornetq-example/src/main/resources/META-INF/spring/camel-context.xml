@@ -1,0 +1,49 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:camel="http://camel.apache.org/schema/spring"
+       xsi:schemaLocation="
+          http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+          http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
+
+    <bean id="jndiTemplate" class="org.springframework.jndi.JndiTemplate">
+        <property name="environment">
+            <props>
+                <prop key="java.naming.factory.initial">org.jnp.interfaces.NamingContextFactory</prop>
+                <prop key="java.naming.provider.url">jnp://localhost:1099</prop>
+                <prop key="java.naming.factory.url.pkgs">org.jnp.interfaces:org.jboss.naming</prop>
+            </props>
+        </property>
+    </bean>
+
+    <bean id="jmsConnectionFactory"
+      class="org.springframework.jndi.JndiObjectFactoryBean">
+        <property name="jndiTemplate">
+            <ref bean="jndiTemplate"/>
+        </property>
+        <property name="jndiName">
+            <value>ConnectionFactory</value>
+        </property>
+    </bean>
+    
+    <bean id="cachedConnectionFactory"
+    	class="org.springframework.jms.connection.CachingConnectionFactory">
+    	<property name="targetConnectionFactory">
+    		<ref bean="jmsConnectionFactory"/>
+    	</property>
+    	<property name="sessionCacheSize">
+    		<value>10</value>
+    	</property>
+    </bean>
+    	
+    <bean name="jms" class="org.apache.camel.component.jms.JmsComponent">
+        <property name="connectionFactory" ref="cachedConnectionFactory"/>
+    </bean>
+
+    <camel:camelContext id="context1">
+        <camel:route id="FirstRoute">
+            <camel:from uri="jms:queue:inputqueue"/>
+            <camel:log logName="jmsLog" message="Got message from JMS queue:"/>
+            <camel:to uri="jms:topic:helloworld"/>
+        </camel:route>
+    </camel:camelContext>
+</beans>
